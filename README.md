@@ -2,7 +2,6 @@
 Um simulador de vida universitária em C++ com a biblioteca SFML, focado na jornada de um aluno de Ciência da Computação na UFSCar.
 
 ![Gameplay Screenshot](./img/gameplay1.png)
-*(Sugestão: Tire um print da tela do jogo e salve como "gameplay.png" no repositório)*
 
 ## 📝 Descrição
 
@@ -65,3 +64,7 @@ Este jogo foi desenvolvido como projeto para a disciplina de **Algoritmos e Estr
 | Miguel Leal Landi | 847792 |
 | Mateus Alves da Silva Dias | 847942 |
 | Gabriel Ribeiro Almeida do Carmo | 845242 |
+
+![Gameplay Screenshot](./img/gameplay2.png)
+![Gameplay Screenshot](./img/gameplay3.png)
+![Gameplay Screenshot](./img/gameplay4.png)
