@@ -37,8 +37,8 @@ Este jogo foi desenvolvido como projeto para a disciplina de **Algoritmos e Estr
 
 1.  Clone este repositório:
     ```bash
-    git clone [[https://github.com/renan-michelao/BCC-UFSCar-RPG.git](https://github.com/renan-michelao/BCC-UFSCar-RPG.git)
-    cd BCC-UFSCar-RPG](https://github.com/renan-michelao/Vida-Universitaria-RPG.git)
+    git clone https://github.com/renan-michelao/Vida-Universitaria-RPG
+    cd Vida-Universitaria-RPG
     ```
 
 2.  Compile o projeto usando o Makefile:
