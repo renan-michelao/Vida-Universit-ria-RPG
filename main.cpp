@@ -27,14 +27,14 @@ int main() {
     Game* jogo = nullptr;
 
     // Música de fundo (coloque o arquivo em ./assets/music/bg_music.ogg ou ajuste o caminho)
-    // sf::Music bgMusic;
-    // if (bgMusic.openFromFile("/home/renan/Faculdade/teste rpg/assets/music/SpotiDown.App - Nothing Else Matters - Instrumental Version - Rock Hero.mp3")) {
-    //     bgMusic.setLoop(true);
-    //     bgMusic.setVolume(35.f); // volume moderado
-    //     bgMusic.play();
-    // } else {
-    //     std::cerr << "Aviso: nao foi possivel carregar a musica de fundo." << std::endl;
-    // }
+    sf::Music bgMusic;
+    if (bgMusic.openFromFile("/home/renan/Faculdade/teste rpg/assets/music/SpotiDown.App - Lofi Hip Hop Instrumental Chill Beats Music - Lofi Only.mp3")) {
+        bgMusic.setLoop(true);
+        bgMusic.setVolume(35.f); // volume moderado
+        bgMusic.play();
+    } else {
+        std::cerr << "Aviso: nao foi possivel carregar a musica de fundo." << std::endl;
+    }
 
     // --- TELA INICIAL (MENU) ---
     sf::Texture texturaInicio;

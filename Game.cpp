@@ -48,20 +48,11 @@ void Game::carregarTexturas() {
     if (!texturas["bg_at"].loadFromFile(path + "bg_at.png")) {
         std::cerr << "Aviso: Não foi possível carregar bg_at.png" << std::endl;
     }
-    if (!texturas["bg_ex_bloqueou"].loadFromFile(path + "bg_ex_bloqueou.jpg")) {
-        std::cerr << "Aviso: Não foi possível carregar bg_ex_bloqueou.jpg" << std::endl;
-    }
-    if (!texturas["bg_quarto"].loadFromFile(path + "bg_quarto.png")) {
-        std::cerr << "Aviso: Não foi possível carregar bg_quarto.png" << std::endl;
-    }
     if (!texturas["bg_DPMatematica"].loadFromFile(path + "bg_DPMatematica.jpg")) {
         std::cerr << "Aviso: Não foi possível carregar bg_DPMatematica.jpg" << std::endl;
     }
     if (!texturas["bg_pracinha"].loadFromFile(path + "bg_pracinha.jpg")) {
         std::cerr << "Aviso: Não foi possível carregar bg_pracinha.jpg" << std::endl;
-    }
-    if (!texturas["bg_ligandoEx"].loadFromFile(path + "bg_ligandoEx.jpg")) {
-        std::cerr << "Aviso: Não foi possível carregar bg_ligandoEx.jpg" << std::endl;
     }
     if (!texturas["bg_ufscar"].loadFromFile(path + "bg_ufscar.jpg")) {
         std::cerr << "Aviso: Não foi possível carregar bg_ufscar.jpg" << std::endl;
@@ -131,6 +122,86 @@ Evento* Game::criarPrologo() {
     arq->proximoEventoEsq = fim; arq->proximoEventoDir = fim;
 
     return raiz;
+}
+
+// --- IMPLEMENTAÇÃO DAS NOVAS MECÂNICAS ---
+
+bool Game::testarHabilidade(int baseChance, int bonusStat) {
+    // Fórmula: Chance Base + Metade do Status do Jogador
+    // Ex: 30 (Base) + 40 (metade de 80 de Nota) = 70% de chance
+    int chanceFinal = baseChance + (bonusStat / 2);
+    
+    // Penalidade se estiver com Burnout (Mente < 30)
+    if (player.getMente() < 30) chanceFinal -= 20;
+
+    // Garante que a chance fique entre 5% e 95%
+    if (chanceFinal > 95) chanceFinal = 95;
+    if (chanceFinal < 5) chanceFinal = 5;
+
+    int rolagem = rand() % 100; // Gera número entre 0 e 99
+    return rolagem < chanceFinal;
+}
+
+Evento* Game::criarEventoCapivara(Evento* proximo) {
+    Evento* capivara = new Evento(
+        "Você está caminhando pelo campus quando uma CAPIVARA MÍSTICA bloqueia seu caminho. Ela te encara profundamente.",
+        "bg_ufscar", 
+        "Fazer carinho (Arriscado).",
+        "Desabafar com ela (Espiritual)."
+    );
+
+    // Lógica do Carinho: 50% de chance de dar certo ou errado
+    bool aceitouCarinho = (rand() % 100) < 50;
+
+    if (aceitouCarinho) {
+        // BENÇÃO DA CAPIVARA: Recupera muito!
+        capivara->textoOpcaoEsq = "Ela aceitou o carinho e fechou os olhos! Você sente uma paz interior.";
+        capivara->impactoEsq = ImpactoStats(+30, 0, +10, 0, 0); 
+    } else {
+        // MORDIDA DE AMOR: Perde saúde
+        capivara->textoOpcaoEsq = "Ela se assustou e tentou morder sua mão!";
+        capivara->impactoEsq = ImpactoStats(-10, 0, -15, 0, 0);
+    }
+
+    // Desabafar é seguro
+    capivara->impactoDir = ImpactoStats(+15, 0, 0, 0, 0); 
+
+    // Independente da escolha, o jogo segue para o evento que passamos como parâmetro
+    capivara->proximoEventoEsq = proximo;
+    capivara->proximoEventoDir = proximo;
+
+    return capivara;
+}
+
+Evento* Game::criarEventoAlmocoRU(Evento* proximo) {
+    Evento* ru = new Evento(
+        "Hora do almoço! O cardápio do RU é 'Strogonoff Misterioso'. A fila está grande.",
+        "bg_ru",
+        "Encarar o RU (Economiza tempo, risco de passar mal).",
+        "Comer na Lanchonete (Gasta tempo, mas comida segura)."
+    );
+
+    // Lógica da Roleta Russa do RU: 20% de chance de intoxicação
+    bool intoxicacao = (rand() % 100) < 20;
+
+    if (intoxicacao) {
+        // RUIM: O jogador passa mal na aula seguinte
+        ru->textoOpcaoEsq = "A comida estava estranha... Você passou a tarde no banheiro.";
+        ru->impactoEsq = ImpactoStats(-10, 0, -25, -5, +10); // Perde saúde, nota e ganha falta
+    } else {
+        // BOM: Alimentado e economizou tempo
+        ru->textoOpcaoEsq = "Estava delicioso! Você economizou tempo e dinheiro.";
+        ru->impactoEsq = ImpactoStats(+5, +5, +5, +5, 0);
+    }
+
+    // Lanchonete: Seguro, mas perde tempo de estudo (Nota cai um pouco ou não sobe)
+    ru->impactoDir = ImpactoStats(+5, +10, +5, -5, 0);
+
+    // Conecta ao próximo
+    ru->proximoEventoEsq = proximo;
+    ru->proximoEventoDir = proximo;
+
+    return ru;
 }
 
 Evento* Game::criarSemestre1() {
@@ -714,6 +785,8 @@ Evento* Game::criarSemestre3() {
     raiz->impactoEsq = ImpactoStats(0, +5, 0, +5, 0);
     raiz->impactoDir = ImpactoStats(0, +10, 0, -5, 0);
 
+    Evento* almoco = criarEventoAlmocoRU(raiz);
+
     // Rota com Lucas - Trabalho sério
     Evento* trabalhoLucas = new Evento(
         "Você e Lucas trabalham juntos. Ele é organizado e vocês fazem um bom trabalho.",
@@ -877,7 +950,7 @@ Evento* Game::criarSemestre3() {
         dramaAlice->proximoEventoDir = fim;
     }
 
-    return raiz;
+    return almoco;
 }
 
 Evento* Game::criarSemestre4() {
@@ -1024,8 +1097,10 @@ Evento* Game::criarSemestre5() {
 
     Evento* fim = new Evento("Fim do Semestre 5.", "bg_ru", EventoTipo::FINAL_SEMESTRE);
     lucasRecuperacao->proximoEventoEsq = fim; lucasRecuperacao->proximoEventoDir = fim;
+
+    Evento* capivara = criarEventoCapivara(raiz);
     
-    return raiz;
+    return capivara;
 }
 
 Evento* Game::criarSemestre6() {
@@ -1102,75 +1177,141 @@ Evento* Game::criarSemestre6() {
 }
 
 Evento* Game::criarSemestre7() {
-    // S7: O Mercado de Trabalho Real
+    // --- INTRODUÇÃO: A BUSCA POR ESTÁGIO ---
     Evento* inicio = new Evento(
-        "S7: Hora de buscar estágio. O LinkedIn está pegando fogo.", 
+        "S7: A Reta Final. O TCC começa e a busca por estágio é obrigatória.",
         "bg_dc",
-        "Atualizar LinkedIn e GitHub (Profissional).", 
-        "Pedir indicação pros veteranos (Social)."
+        "Focar em Big Techs (Processos longos, altos salários).",
+        "Focar em Startups locais (Aprendizado rápido, salário menor)."
     );
 
-    // O DESAFIO TÉCNICO
+    // --- O DESAFIO TÉCNICO ---
     Evento* desafioTecnico = new Evento(
-        "Uma Big Tech de SP te chamou para entrevista. O desafio: Inverter uma Árvore Binária no quadro.",
+        "Você conseguiu uma entrevista decisiva! O entrevistador pede para você inverter uma Árvore Binária no quadro branco.",
         "bg_startap",
-        "Tentar solução recursiva elegante (Risco de errar sintaxe).",
-        "Fazer solução iterativa segura (Mais código, mas funciona)."
+        "Tentar solução recursiva elegante (Usa INTELIGÊNCIA/NOTAS).",
+        "Tentar desenrolar na conversa/soft skills (Usa SOCIAL)."
     );
     
+    // Conecta início ao desafio
     inicio->proximoEventoEsq = desafioTecnico;
     inicio->proximoEventoDir = desafioTecnico;
+    
+    // Definindo impactos da escolha de foco (apenas flavor/status)
+    inicio->impactoEsq = ImpactoStats(0, 0, 0, +5, 0); // Big Tech exige nota
+    inicio->impactoDir = ImpactoStats(0, +5, 0, 0, 0); // Startup exige social
 
-    // RAMIFICAÇÃO DE SUCESSO OU FRACASSO
-    // Aqui usamos a lógica: Esquerda (Recursiva) é "Tudo ou Nada". Direita é "Seguro".
+    // --- RESULTADOS DO ESTÁGIO ---
     
-    // CAMINHO SUCESSO: Estágio TOP
+    // CAMINHO A: ESTÁGIO TOP (Sucesso)
     Evento* estagioTop = new Evento(
-        "Você brilhou! A vaga é sua. Salário alto, VR gordo e Macbook da empresa.",
+        "SUCESSO! Você impressionou os recrutadores. A vaga é sua: Salário alto, VR gordo e MacBook da empresa.",
         "bg_startap",
-        "Focar em crescer na empresa (Carreira).",
-        "Guardar dinheiro e focar no TCC (Equilíbrio)."
+        "Focar em crescer na empresa (Carreira++, TCC--).",
+        "Fazer o mínimo e focar no TCC (Carreira--, TCC++)."
     );
-    estagioTop->impactoEsq = ImpactoStats(-10, +5, 0, 0, 0); // Carreira
-    estagioTop->impactoDir = ImpactoStats(0, 0, 0, +10, 0);  // TCC
+    // Impactos do Estágio Top
+    estagioTop->impactoEsq = ImpactoStats(-10, +10, -5, -10, 0); // Foca empresa
+    estagioTop->impactoDir = ImpactoStats(0, -5, 0, +15, 0);     // Foca TCC
     
-    // CAMINHO FRACASSO: Estágio "Arrombado" (Exploratório)
+    // CAMINHO B: ESTÁGIO RUIM (Fracasso)
     Evento* estagioRuim = new Evento(
-        "Você travou no quadro. A Big Tech agradeceu e sumiu. Só sobrou uma vaga na 'Consultoria do Tio Zé'.",
-        "bg_jubilado", // Fundo triste
-        "Aceitar (Preciso das horas de estágio).",
-        "Recusar e tentar IC de novo (Menos dinheiro, mais estudo)."
-    );
-    
-    // Conecta desafio aos resultados
-    // Vamos supor que a Recursiva (Esq) tem chance de dar errado dependendo da Nota, 
-    // mas na árvore estática, vamos definir que Esquerda = Arrisca (Pode ir pro Top ou Ruim na logica interna, 
-    // mas aqui vamos forçar um caminho narrativo: Esquerda = Acertou (Top), Direita = Seguro (Top mediano).
-    // Para criar drama, vamos fazer o seguinte:
-    
-    // Para simular dificuldade, vamos dizer que a solução iterativa (Dir) foi "muito lenta" e leva pro estágio ruim.
-    // É uma pegadinha de entrevista técnica.
-    
-    desafioTecnico->proximoEventoEsq = estagioTop;  // Recursiva deu certo
-    desafioTecnico->proximoEventoDir = estagioRuim; // Iterativa não impressionou
-    
-    // CONSEQUENCIAS DO ESTÁGIO RUIM
-    Evento* rotinaEstagioRuim = new Evento(
-        "No estágio, você serve café e formata PC com Windows 7. Seu chefe grita.",
+        "Você travou. O recrutador agradeceu e encerrou. Só sobrou uma vaga na 'Consultoria do Tio Zé'. PC lento e chefe gritando.",
         "bg_jubilado",
-        "Engolir o sapo (Resiliência).",
+        "Engolir o sapo e trabalhar (Resiliência++, Saúde--).",
         "Pedir demissão e focar só no TCC (Arriscado financeiramente)."
     );
-    estagioRuim->proximoEventoEsq = rotinaEstagioRuim;
-    estagioRuim->proximoEventoDir = rotinaEstagioRuim; // Se recusar, vai pra rotina de desempregado (simplificado aqui)
+    // Impactos do Estágio Ruim
+    estagioRuim->impactoEsq = ImpactoStats(-20, 0, -15, -5, 0); // Trabalha sofrendo
+    estagioRuim->impactoDir = ImpactoStats(+10, 0, +10, +20, 0); // Demissão (tempo pro TCC)
 
-    // FIM DO SEMESTRE
-    Evento* fim = new Evento("Fim do Semestre 7. O TCC se aproxima.", "bg_ru", EventoTipo::FINAL_SEMESTRE);
+    // --- LÓGICA DO TESTE DE HABILIDADE (MECÂNICA NOVA) ---
     
-    estagioTop->proximoEventoEsq = fim;
-    estagioTop->proximoEventoDir = fim;
-    rotinaEstagioRuim->proximoEventoEsq = fim;
-    rotinaEstagioRuim->proximoEventoDir = fim;
+    // Opção 1: Recursiva (Usa Notas)
+    // Chance base 30% + Bônus de Notas (Ex: Notas 80 -> +40% = 70% total)
+    if (testarHabilidade(30, player.getNotas())) {
+        desafioTecnico->proximoEventoEsq = estagioTop;
+    } else {
+        desafioTecnico->proximoEventoEsq = estagioRuim;
+    }
+
+    // Opção 2: Lábia (Usa Social)
+    // Chance base 40% + Bônus de Social (Ex: Social 80 -> +40% = 80% total)
+    if (testarHabilidade(40, player.getSocial())) {
+        desafioTecnico->proximoEventoDir = estagioTop;
+    } else {
+        desafioTecnico->proximoEventoDir = estagioRuim;
+    }
+
+    // --- O TCC (TRABALHO DE CONCLUSÃO DE CURSO) ---
+    
+    Evento* escolhaTCC = new Evento(
+        "Enquanto o estágio rola, você precisa definir o TCC. Qual será o tema?",
+        "bg_dc",
+        "Inteligência Artificial (Tema da moda, difícil, orientador exigente).",
+        "Sistema Web Clássico (Seguro, orientador tranquilo)."
+    );
+
+    // Se escolheu IA (Mais difícil, mas pode dar prestígio)
+    escolhaTCC->impactoEsq = ImpactoStats(-10, 0, 0, 0, 0);
+    // Se escolheu Web (Mais fácil)
+    escolhaTCC->impactoDir = ImpactoStats(+5, 0, 0, +5, 0);
+
+    // Conecta Estágios ao TCC
+    estagioTop->proximoEventoEsq = escolhaTCC;
+    estagioTop->proximoEventoDir = escolhaTCC;
+    estagioRuim->proximoEventoEsq = escolhaTCC;
+    estagioRuim->proximoEventoDir = escolhaTCC;
+
+    // --- CONFLITO DE RELACIONAMENTO (ALICE) ---
+    // Só acontece se estiver namorando ou "ficando sério"
+    Evento* proximoDoTCC = nullptr;
+
+    if (player.getNomeNamorada() == "Alice" || player.getFlag("RelacionamentoAlice")) {
+        Evento* ultimato = new Evento(
+            "Alice te chama para conversar sério: 'Você só trabalha e estuda! Esqueceu da gente? Estamos nos afastando.'",
+            "bg_ru",
+            "Priorizar Alice (Fortalece relação, atrasa TCC).",
+            "Pedir paciência e focar na carreira (Risco de término)."
+        );
+        
+        ultimato->impactoEsq = ImpactoStats(+10, +15, 0, -10, 0); // Amor++
+        ultimato->impactoDir = ImpactoStats(-10, -20, 0, +10, 0); // Amor--
+
+        // Risco de término se escolher carreira
+        if (player.getSocial() < 40) {
+            // Se social for baixo, ela termina se você escolher carreira
+             // (Isso seria lógica complexa, aqui vamos simplificar nos impactos)
+        }
+
+        escolhaTCC->proximoEventoEsq = ultimato;
+        escolhaTCC->proximoEventoDir = ultimato;
+        proximoDoTCC = ultimato;
+    } else {
+        // Se solteiro, evento de descanso/social
+        Evento* happyHour = new Evento(
+            "Fim de expediente. A galera do estágio vai pro Happy Hour.",
+            "bg_festa",
+            "Ir junto (Networking).",
+            "Ir pra casa adiantar TCC (Foco)."
+        );
+        happyHour->impactoEsq = ImpactoStats(0, +15, -5, -5, 0);
+        happyHour->impactoDir = ImpactoStats(+5, -5, +5, +10, 0);
+        
+        escolhaTCC->proximoEventoEsq = happyHour;
+        escolhaTCC->proximoEventoDir = happyHour;
+        proximoDoTCC = happyHour;
+    }
+
+    // --- FIM DO SEMESTRE ---
+    Evento* fim = new Evento(
+        "Fim do Semestre 7. O TCC está encaminhado e o estágio definido.", 
+        "bg_dc", 
+        EventoTipo::FINAL_SEMESTRE
+    );
+
+    proximoDoTCC->proximoEventoEsq = fim;
+    proximoDoTCC->proximoEventoDir = fim;
 
     return inicio;
 }
@@ -1301,21 +1442,17 @@ void Game::processarLogicaEspecial(Evento* eventoAnterior, int escolhaFeita) {
     std::string txt = (escolhaFeita == 1) ? eventoAnterior->textoOpcaoEsq : eventoAnterior->textoOpcaoDir;
     std::string desc = eventoAnterior->descricao;
     
-    // PROLOGO: MORADIA EM SÃO CARLOS
-    if (txt.find("Morar em republica") != std::string::npos) {
-        player.setFlag("MoraRepublica", true);
-    }
-    if (txt.find("Morar sozinho em kitnet") != std::string::npos) {
-        player.setFlag("MoraSozinho", true);
-    }
+    // --- PROLOGO ---
+    if (txt.find("Morar em republica") != std::string::npos) player.setFlag("MoraRepublica", true);
+    if (txt.find("Morar sozinho") != std::string::npos) player.setFlag("MoraSozinho", true);
     
-    // Arquétipos
+    // --- ARQUETIPOS ---
     if (eventoAnterior->tipo == EventoTipo::ESCOLHA_ARQUETIPO) {
         if (escolhaFeita == 1) player.setArquetipo(Arquetipo::HERDEIRO);
         else player.setArquetipo(Arquetipo::NERDOLA);
     }
 
-    // S1: Alice
+    // --- S1 & S2: RELACIONAMENTOS INICIAIS ---
     if (txt.find("Ser humilde") != std::string::npos || txt.find("pedir ajuda") != std::string::npos) {
         player.setFlag("AmigoAlice", true);
         if (player.getSocial() > 30) {
@@ -1323,16 +1460,13 @@ void Game::processarLogicaEspecial(Evento* eventoAnterior, int escolhaFeita) {
             player.setFlag("RelacionamentoAlice", true);
         }
     }
-    if (txt.find("Pedir desculpas") != std::string::npos) {
-        player.setFlag("AmigoAlice", true); // Mesmo depois de mentir, pode se redimir
-    }
     if (txt.find("trocar contato") != std::string::npos) {
         player.setFlag("AmigoAlice", true);
         if (player.getSocial() > 25) player.setNamorada("Alice", "Ficando");
     }
     
-    // S1: Roberto
-    if (txt.find("Defender o colega") != std::string::npos || txt.find("Defender") != std::string::npos) {
+    // --- S1: ROBERTO ---
+    if (txt.find("Defender") != std::string::npos) { // Simplificado para pegar "Defender o colega"
         player.setFlag("HumilhouRoberto", true);
         player.setFlag("RivalRoberto", true);
     }
@@ -1340,127 +1474,98 @@ void Game::processarLogicaEspecial(Evento* eventoAnterior, int escolhaFeita) {
         player.setFlag("ConfrontouRoberto", true);
         player.setFlag("RivalRoberto", true);
     }
-    // S2: TUSCA e Bruno (novembro - semestre par)
-    if (txt.find("Ir pro esquenta da TUSCA") != std::string::npos || 
-        txt.find("Ir pro esquenta") != std::string::npos || 
-        txt.find("Beber tudo") != std::string::npos) {
+    if (txt.find("Cobrar Roberto") != std::string::npos) { // S4
+        player.setFlag("ConfrontouRoberto", true);
+        player.setFlag("RivalRoberto", true);
+    }
+
+    // --- S2: TUSCA & BRUNO ---
+    if (txt.find("Ir pro esquenta") != std::string::npos || txt.find("Beber tudo") != std::string::npos) {
         player.setFlag("FoiTuscaS2", true);
         player.setFlag("ConheceuBruno", true);
     }
-    // S1: Lucas
-    if (txt.find("Ajudar Lucas") != std::string::npos) {
-        player.setFlag("AmigoLucas", true);
-    }
+    if (txt.find("Ajudar Lucas") != std::string::npos) player.setFlag("AmigoLucas", true);
     
-    // S2: Projetos de Extensão - Atualiza status
-    if (txt.find("Cati Jr") != std::string::npos || txt.find("Empreendedorismo") != std::string::npos || 
-        txt.find("Trainee na Cati") != std::string::npos) {
-        player.setProjeto("Cati Jr");
-        player.setEmprego("Trainee Cati Jr");
+    // --- S2: PROJETOS ---
+    if (txt.find("Cati Jr") != std::string::npos || txt.find("Empreendedorismo") != std::string::npos) {
+        player.setProjeto("Cati Jr"); player.setEmprego("Trainee Cati Jr");
     }
-    if (txt.find("Red Dragons") != std::string::npos || txt.find("Robótica") != std::string::npos || 
-        txt.find("entrou na Red Dragons") != std::string::npos) {
+    if (txt.find("Red Dragons") != std::string::npos || txt.find("Robótica") != std::string::npos) {
         player.setProjeto("Red Dragons");
     }
-    if (txt.find("PET") != std::string::npos || txt.find("Pesquisa e Ensino") != std::string::npos ||
-        txt.find("passou no PET") != std::string::npos) {
-        player.setProjeto("PET");
-        player.setEmprego("Bolsista PET");
+    if (txt.find("PET") != std::string::npos || txt.find("Pesquisa") != std::string::npos) {
+        player.setProjeto("PET"); player.setEmprego("Bolsista PET");
     }
 
-    // S2: Alice - aprofundar relacionamento e pedido de namoro
-    if (txt.find("Convidar ela para sair") != std::string::npos ||
-        txt.find("Romance") != std::string::npos) {
+    // --- ALICE: DESENVOLVIMENTO (S2) ---
+    if (txt.find("Convidar ela para sair") != std::string::npos || txt.find("Romance") != std::string::npos) {
         player.setFlag("AmigoAlice", true);
         if (player.getSocial() > 30) {
             player.setNamorada("Alice", "Ficando");
             player.setFlag("RelacionamentoAlice", true);
         }
     }
-    if (txt.find("Tentar beijá-la") != std::string::npos) {
-        player.setFlag("RelacionamentoAlice", true);
-    }
-    if (txt.find("Planejar um pedido clássico") != std::string::npos) {
-        player.setFlag("PedidoClassicoAlice", true);
-    }
-    if (txt.find("Fazer um aplicativo especial") != std::string::npos) {
-        player.setFlag("PedidoAppAlice", true);
-    }
-    if (txt.find("Dizer que a ama e pedir em namoro") != std::string::npos ||
-        desc.find("Você pede Alice em namoro") != std::string::npos ||
-        desc.find("Alice ri, se emociona e aceita o pedido") != std::string::npos) {
+    if (txt.find("Pedir em namoro") != std::string::npos || 
+        txt.find("Dizer que a ama") != std::string::npos ||
+        txt.find("Esperar ela clicar") != std::string::npos) { // Cobre as opções de pedido
         player.setNamorada("Alice", "Namorando");
         player.setFlag("RelacionamentoAlice", true);
         player.setFlag("NamoroAlice", true);
     }
-    // S2: Traição
-    if (txt.find("Beijar (Traição") != std::string::npos && 
-        (player.getNomeNamorada() == "Alice" || player.getFlag("RelacionamentoAlice"))) {
-        player.setFlag("TraiuAlice", true);
-    }
+    if (txt.find("Traição") != std::string::npos) player.setFlag("TraiuAlice", true);
 
-    // S3: Plágio (Bruno)
-    if (txt.find("Aceitar") != std::string::npos) {
-        // Aceitou o código do Bruno
-        player.setFlag("Plagio", true);
-    }
+    // --- S3: PLÁGIO ---
+    if (txt.find("Aceitar") != std::string::npos && desc.find("Bruno") != std::string::npos) player.setFlag("Plagio", true);
     if (txt.find("Culpar o Bruno") != std::string::npos) {
-        player.setFlag("TraiuBruno", true);
-        player.setFlag("ProcessoDisciplinar", false); // Livrou a cara
+        player.setFlag("TraiuBruno", true); player.setFlag("ProcessoDisciplinar", false);
     }
-    if (txt.find("Assumir a culpa") != std::string::npos) {
-        player.setFlag("ProcessoDisciplinar", true);
-    }
+    if (txt.find("Assumir a culpa") != std::string::npos) player.setFlag("ProcessoDisciplinar", true);
 
-    // S4: Monitoria
-    if (txt.find("Monitoria") != std::string::npos || txt.find("Aceitar") != std::string::npos) {
-        if (eventoAnterior->descricao.find("Monitoria") != std::string::npos || 
-            eventoAnterior->descricao.find("IC") != std::string::npos) {
-            player.setEmprego("Monitor");
-        }
-    }
-    
-    // S7: Estágio
-    // Garante que QUALQUER aceitação do estágio atualize o cargo
-    if (txt.find("Aceitar imediatamente") != std::string::npos ||
-        txt.find("Negociar condicoes")   != std::string::npos || // versao sem acento
-        txt.find("Negociar condições")   != std::string::npos || // versao com acento
-        desc.find("te oferece o estágio") != std::string::npos || 
-        desc.find("te oferece o estagio") != std::string::npos) 
-    {
-        player.setEmprego("Estagiário");
-        player.setFlag("TemEstagio", true);
-    }
-    if (txt.find("Ficar e resolver") != std::string::npos) {
-        player.setFlag("HeroiEstagio", true);
-    }
-    // S4: Roberto sabotagem
-    if (txt.find("Cobrar Roberto") != std::string::npos) {
-        player.setFlag("ConfrontouRoberto", true);
-        player.setFlag("RivalRoberto", true);
-    }
-    
-    // S5: Lucas Burnout
+    // --- S4 & S5 & S6 ---
+    if (txt.find("Monitoria") != std::string::npos || txt.find("IC") != std::string::npos) player.setEmprego("Monitor");
     if (txt.find("Visitar Lucas") != std::string::npos) player.setFlag("VisitouLucas", true);
     if (txt.find("Convencer ele a ir") != std::string::npos) player.setFlag("AjudouLucas", true);
-    
-    // S6: Bruno e Alice
     if (txt.find("Tentar ajudar Bruno") != std::string::npos) player.setFlag("AjudouBruno", true);
-    if (txt.find("Apoiar a decisão dela") != std::string::npos) player.setFlag("ApoiouAlice", true);
-    if (txt.find("Tentar manter o relacionamento") != std::string::npos) player.setFlag("NamoroDistancia", true);
-    if (txt.find("Terminar amigavelmente") != std::string::npos) {
-        // Fim oficial do relacionamento com Alice
+    
+    // --- ALICE: CRISE E TÉRMINO (S6 & S7) ---
+    // [CORREÇÃO AQUI] - Verifica "Terminar" de forma mais genérica para garantir
+    bool decidiuTerminar = (txt.find("Terminar") != std::string::npos && txt.find("amigavelmente") != std::string::npos) || 
+                           (txt.find("Terminar tudo") != std::string::npos);
+    
+    if (decidiuTerminar) {
         player.setNamorada("", "Solteiro");
         player.setFlag("RelacionamentoAlice", false);
         player.setFlag("NamoroAlice", false);
         player.setFlag("NamoroDistancia", false);
         player.setFlag("TerminoAlice", true);
     }
+
+    if (txt.find("Tentar manter") != std::string::npos) player.setFlag("NamoroDistancia", true);
+    if (txt.find("Apoiar a decisão") != std::string::npos) player.setFlag("ApoiouAlice", true);
+
+    // [CORREÇÃO S7] - Ultimato da Alice
+    if (txt.find("Pedir paciência") != std::string::npos) {
+        // Se escolheu carreira e tem pouco social, ela termina com você
+        if (player.getSocial() < 50) { 
+            player.setNamorada("", "Solteiro");
+            player.setFlag("RelacionamentoAlice", false);
+            player.setFlag("NamoroAlice", false);
+            player.setFlag("TerminoAlice", true);
+            // Nota: O jogador só vai perceber isso no próximo texto ou na barra de status
+        }
+    }
+
+    // --- S7 & S8: TCC e ESTÁGIO ---
+    // Detecta estágio de qualquer forma (Startup ou Big Tech)
+    if (desc.find("estágio") != std::string::npos && 
+       (txt.find("Aceitar") != std::string::npos || txt.find("Engolir o sapo") != std::string::npos || txt.find("Focar em crescer") != std::string::npos)) {
+        player.setEmprego("Estagiário");
+        player.setFlag("TemEstagio", true);
+    }
     
-    // S7-S8: TCC
+    if (txt.find("Ficar e resolver") != std::string::npos) player.setFlag("HeroiEstagio", true);
     if (txt.find("Adiantar a escrita") != std::string::npos) player.setFlag("TCCAdiantado", true);
-    if (txt.find("Virar noites até resolver") != std::string::npos) player.setFlag("TCCResolvido", true);
-    
+    if (txt.find("Virar noites") != std::string::npos) player.setFlag("TCCResolvido", true);
 }
 
 bool Game::verificarAtributosBaixos() const {

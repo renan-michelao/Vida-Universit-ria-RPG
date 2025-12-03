@@ -55,6 +55,11 @@ private:
     Evento* criarEventoDescanso(Evento* proximoEventoOriginal);
     Evento* criarEventoFinalPersonalizado();
 
+    // --- NOVAS MECÂNICAS (Adicionadas corretamente aqui) ---
+    bool testarHabilidade(int baseChance, int bonusStat);
+    Evento* criarEventoCapivara(Evento* proximo);
+    Evento* criarEventoAlmocoRU(Evento* proximo);
+
 public:
     Game(sf::RenderWindow& jan, const sf::Font& f);
     ~Game();
